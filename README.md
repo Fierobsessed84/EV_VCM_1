@@ -1,7 +1,10 @@
 # EV_VCM_1
-Open Source EV VCM
+Open Source EV Vehicle Control Module
 This project is my development of an EV VCM to run my personal car. Others may find this to be useful so i'm putting it out there. Not everything is going to work for everyone,
 but if you have the know how, you can use this as a launchpad to re-work it to suite your own needs.
+
+The main file for the code is Teensy_project_VCM
+
 I deliberately wrote the code to be very comment heavy. I know what a brain drain it is to look at other peoples uncommented code, or even just a complex one that you wrote yourself.
 Overall, the function of the VCM is to manage the drive unit, Battery balancing and management, charge control, throttle and regen sensor handling, inertial traction control,
 thermal management, datalogging, and whatever else might fall into it's wheelhouse.
