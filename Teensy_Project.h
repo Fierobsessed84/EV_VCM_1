@@ -5,13 +5,47 @@ bool log_accelerator_positions     = true;    // display and log accelerator pos
 bool log_charger_comms             = false;    // display and log charger communications
 bool log_pack0_cell_voltages       = false;    // display and log all battery cell voltages for pack 0
 bool log_pack1_cell_voltages       = false;    // display and log all battery cell voltages for pack 1
-bool log_cell_statistics           = true;    // display and log cell statistics
+bool log_cell_statistics           = false;    // display and log cell statistics
 bool log_balancing_states          = false;    // display and log all battery balancing cell states (balancing events are always logged anyway!)
 bool log_pack_data                 = false;    // display and log pack data (pack voltage, amperages and temperatures)
 bool log_thermal_management        = false;    // display and log all coolant valve related stuff
 bool log_charge_port               = false;    // display and log data from the charge port
 bool log_traction_control          = false;    // display and log traction control variables
 bool log_accelerometer             = false;    // display and log accelerometer data
+
+unsigned long schedule[] ={  // mS interval, millis of last run (init at 0), // function    description
+10, 0,    // index 0  shifter_pos                      determine shifter position
+10, 0,    // index 1  du_calcs                         do drive unit calculations
+10, 0,    // index 2  du_outgoing_message              do drive unit outputs
+10, 0,    // index 3  du_accelerometer_read            do accelerometer read
+10, 0,    // index 4  du_traction_control              do traction control routine
+20, 0,    // index 5  output_balancing_can             output balancing data to both packs
+20, 0,    // index 6  execute_master_reset             master reset
+20, 0,    // index 7  shifter_lock                     operate shifter lock
+20, 0,    // index 8  cruise_control                   do cruise control stuff
+20, 0,    // index 9  coolant_diverter_control         do coolant diverter stuff
+20, 0,    // index 10 flash_led                        flash onboard teensy LED
+250, 0,   // index 11 fault_logic                      do simple fault logic
+250, 0,   // index 12 apm_outgoing_message             send can comms to the auxiliary power module (DC DC converter)
+250, 0,   // index 13 charger_outgoing_message         send can comms to the charger
+250, 0,   // index 14 battery_statistics               calculate some battery statistics from the incoming data
+250, 0,   // index 15 balancing_determination          figure out which cells need to be balanced, and if there are any WAY out of balance
+250, 0,   // index 16 balancing_state                  count the quantity of cells balancing, and set the balance state accordingly
+250, 0,   // index 17 pack0_balance_output_sequencer   runs determined balance cells through a sequencer to determine the appropriate outputs
+250, 0,   // index 18 pack1_balance_output_sequencer   runs determined balance cells through a sequencer to determine the appropriate outputs
+250, 0,   // index 19 check_for_shutdown               save data before shutdown
+1000, 0,  // index 20 coulomb_SOC                      determine SOC based on coulombs
+1000, 0,  // index 21 drive_unit_log                   log drive unit data
+1000, 0,  // index 22 cell_statistics                  go log them
+1000, 0,  // index 23 pack0_cell_log                   do cell output sequence (file management tab)
+1000, 0,  // index 24 pack1_cell_log                   do cell output sequence (file management tab)
+1000, 0,  // index 25 accelerator_pos_log              do accelerator position logging
+1000, 0,  // index 26 pack_data_log                    do pack data logging
+1000, 0,  // index 27 pack_comms_trace_reset           reset comms trace, will initiate pack incoming data resets if they don't start flagging as read
+2000, 0,  // index 28 restore_resettables              restore fault variables that can self heal
+2000, 0,  // index 29 coolant_fan_pump_output          sets PWM's for the fans and the pumps
+1000, 0,  // index 30 pack0_reset_incoming_data        reset incoming data
+1000, 0}; // index 31 pack1_reset_incoming_data        reset incoming data
 
 unsigned long currentMillis           = 0;     // initialize millis comparator
 unsigned long previous_010_timer      = 0;     // initialize 010ms timer
@@ -103,7 +137,7 @@ int cruise_rps_limit = 50;                     // max regen rps value for cruise
 byte brake_vcm;                                // VCM brake input state
 int cruise_aps_val;                            // accelerator output value from cruise function
 int cruise_rps_val;                            // regen output value from cruise function
-float aps_rps_deadband = 4;                    // in percentage, this sets up an buffer to ensure full accel when demanded, and no accel when off.
+float aps_rps_deadband = 8;                    // in percentage, this sets up an buffer to ensure full accel when demanded, and no accel when off.
 float aps_rps_fault_tolerance = 15;            // in percentage, if the sensor goes past this percentage from the original settings or the redundant reading, fault the sensor
 int aps1_high  = 2650;                         // accelerator position sensor 1 range high value
 int aps1_low   = 570 ;                         // accelerator position sensor 1 range low value
@@ -195,9 +229,9 @@ byte coolant_pump_drive_unit;                  // drive unit coolant pump output
 byte coolant_pump_radiator;                    // radiator coolant pump output command %
 byte coolant_fan_1;                            // coolant fan 1 output command %
 byte coolant_fan_2;                            // coolant fan 2 output command %
-byte min_pump_PWM = 32;                        // minimum PWM to kick pumps on into low (0-255)   ** Tuns out the pumps arent PWM, so these don't get used, but I left the code in incase.
+byte min_pump_PWM = 36;                        // minimum PWM to kick pumps on into low (0-255)   ** Tuns out the pumps arent PWM, so these don't get used, but I left the code in incase.
 byte max_pump_PWM = 230;                       // PWM where pumps max out (0-255)                 ** Tuns out the pumps arent PWM, so these don't get used, but I left the code in incase.
-byte min_fan_PWM = 32;                         // minimum PWM to kick fans on into low (0-255)
+byte min_fan_PWM = 36;                         // minimum PWM to kick fans on into low (0-255)
 byte max_fan_PWM = 230;                        // PWM where fans max out (0-255)
 byte coolant_diverter_mode_cmd_position;       // commanded position of coolant diverter valve (0-255)
 int coolant_diverter_mode_position;            // position feedback from mode diverter valve

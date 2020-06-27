@@ -12,6 +12,10 @@ void parse_apm_1d6(const CAN_message_t &msg)
 
 void apm_outgoing_message()
 {
+  if (!scheduler(12)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   apm_voltage_req = 135;                         // for testing we're setting it to 13.5 volts, arbitrarily  
   CAN_message_t msg;
   msg.id = 0x1D4;                                // output message ID for the auxiliary power module
@@ -34,6 +38,10 @@ void parse_charger_410(const CAN_message_t &msg)
 
 void charger_outgoing_message()
 {
+  if (!scheduler(13)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   CAN_message_t msg;
   // msg.buf[0] = 
   // msg.buf[1] = charger_volt_set >> 8;

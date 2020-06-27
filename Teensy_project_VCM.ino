@@ -299,155 +299,40 @@ void setup()
 
 void loop()                          // main loop.
 {                                    // you can always comment out various functions to stop them from running
-
   Can0.events();
   Can1.events();
   
-  // Timers in main loop
-  
-  currentMillis = millis();                                              // jot the current millis down for comparison
- 
-  if(currentMillis - previous_010_timer >= timer_010_millis)             // if 10 or more ms have elapsed since the last run, reset the timer and run 010 functions.
-  {
-    previous_010_timer = currentMillis;                                  // reset the timer to current millis
-    loop010();                                                           // do 010ms functions.
-  }  
-
-  currentMillis = millis();                                              // jot the current millis down for comparison
- 
-  if(currentMillis - previous_020_timer >= timer_020_millis)             // if 20 or more ms have elapsed since the last run, reset the timer and run 020 functions.
-  {
-    previous_020_timer = currentMillis;                                  // reset the timer to current millis
-    loop020();                                                           // do 020ms functions.
-  }  
-
-  currentMillis = millis();                                              // jot the current millis down for comparison
- 
-  if(currentMillis - previous_250_timer >= timer_250_millis)             // if 250 or more ms have elapsed since the last run, reset the timer and run 250 functions.
-  {
-    previous_250_timer = currentMillis;                                  // reset the timer to current millis
-    loop250();                                                           // do 250ms functions.
-  }  
-
-  currentMillis = millis();                                              // jot the current millis down for comparison
- 
-  if(currentMillis - previous_1000_timer >= timer_1000_millis)           // if 1000 or more ms have elapsed since the last run, reset the timer and run 1000 functions.
-  {
-    previous_1000_timer = currentMillis;                                 // reset the timer to current millis
-    loop1000();                                                          // do 1000ms functions.
-  }  
-
-  currentMillis = millis();                                              // jot the current millis down for comparison
- 
-  if(currentMillis - previous_2000_timer >= timer_2000_millis)           // if 2000 or more ms have elapsed since the last run, reset the timer and run 2000 functions.
-  {
-    previous_2000_timer = currentMillis;                                 // reset the timer to current millis
-    loop2000();                                                          // do 2000ms functions.
-  }  
-
-  currentMillis = millis();                                              // jot the current millis down for comparison
-
-  if(pack0_comms_timeout_trace > 0)                                      // if any comms have flagged as recieved...
-  {
-    pack0_comms_timeout_clock = currentMillis;                           // reset the timer to current millis
-  }
-  if(currentMillis - pack0_comms_timeout_clock >= pack_comms_timeout)    // if more than the "timeout" ms have elapsed since the last run, reset the timer and run reset functions.
-  {
-    pack0_comms_timeout_clock = currentMillis;                           // reset the timer to current millis
-    pack0_reset_incoming_data();                                         // reset incoming data.
-  }  
-
- currentMillis = millis();                                               // jot the current millis down for comparison
-
-  if(pack1_comms_timeout_trace > 0)                                      // if any comms have flagged as recieved...
-  {
-    pack1_comms_timeout_clock = currentMillis;                           // reset the timer to current millis
-  }
-  if(currentMillis - pack1_comms_timeout_clock >= pack_comms_timeout)    // if more than the "timeout" ms have elapsed since the last run, reset the timer and run reset functions.
-  {
-    pack1_comms_timeout_clock = currentMillis;                           // reset the timer to current millis
-    pack1_reset_incoming_data();                                         // reset incoming data.
-  }  
-
-}                                    // end of main loop
-
-void loop010()                       // This function called every 10mS
-{
-  shifter_pos();
-  du_calcs();
-  du_outgoing_message();
-  du_accelerometer_read();
-  du_traction_control();
- 
-}                                    // end of loop010
-
-void loop020()                       // This function called every 20mS
-{
-  output_balancing_can();            //output balancing data to both packs
-  if (master_reset)
-  {
-    execute_master_reset();            // master reset
-  }
+  // Scheduled routines
+  shifter_pos();                     // determine shifter position
+  du_calcs();                        // do drive unit calculations
+  du_outgoing_message();             // do drive unit outputs
+  du_accelerometer_read();           // do accelerometer read
+  du_traction_control();             // do traction control routine
+  output_balancing_can();            // output balancing data to both packs
+  execute_master_reset();            // master reset
   shifter_lock();                    // operate shifter lock
   cruise_control();                  // do cruise control stuff
-  coolant_diverter_control();         // do coolant diverter stuff
-  digitalWrite(led_pin, !digitalRead(led_pin)); // toggle LED by inverting whats read from it
-}                                    // end of loop020
-
-void loop250()                       // This function called every 250mS
-{
+  coolant_diverter_control();        // do coolant diverter stuff
   fault_logic();                     // do simple fault logic
   apm_outgoing_message();            // send can comms to the auxiliary power module (DC DC converter)
   charger_outgoing_message();        // send can comms to the charger
   battery_statistics();              // calculate some battery statistics from the incoming data
   balancing_determination();         // figure out which cells need to be balanced, and if there are any WAY out of balance
   balancing_state();                 // count the quantity of cells balancing, and set the balance state accordingly
-  if (pack0_enabled)                 // check if pack0 is enabled
-  {
-    pack0_balance_output_sequencer();//runs determined balance cells through a sequencer to determine the appropriate outputs
-  }
-  if (pack1_enabled)                 // check if pack1 is enabled
-  {
-    pack1_balance_output_sequencer();// runs determined balance cells through a sequencer to determine the appropriate outputs
-  }
+  pack0_balance_output_sequencer();  // runs determined balance cells through a sequencer to determine the appropriate outputs
+  pack1_balance_output_sequencer();  // runs determined balance cells through a sequencer to determine the appropriate outputs
   check_for_shutdown();              // save data before shutdown File_management tab.
-  
-}                                    // end of 250ms loop
-
-void loop1000()                      // This function called every 1000mS
-{
   coulomb_SOC();                     // run coulomb SOC calc 
-  if (log_drive_unit_comms)              
-  {
-    drive_unit_log();                // log drive unit data
-  }
-  if (log_cell_statistics)           // if cell stats logging...
-  {
-    cell_statistics();               // go log them
-  }
-  
-  if (log_pack0_cell_voltages)       // if battery cell debug is enabled...
-  {
-    pack0_cell_log();                // do cell output sequence (file management tab)
-  }
-  if (log_pack1_cell_voltages)       // if battery cell debug is enabled...
-  {
-    pack1_cell_log();                // do cell output sequence (file management tab)
-  }
-  if (log_accelerator_positions)     // if log accelerator positions is true...
-  {
-    accelerator_pos_log();           // do accelerator position logging
-  }
-  if (log_pack_data)                 // if log pack data is enabled... 
-  {
-    pack_data_log()     ;             // do pack data logging
-  }
+  drive_unit_log();                  // log drive unit data
+  cell_statistics();                 // go log them
+  pack0_cell_log();                  // do cell output sequence (file management tab)
+  pack1_cell_log();                  // do cell output sequence (file management tab)
+  accelerator_pos_log();             // do accelerator position logging
+  pack_data_log()     ;              // do pack data logging
   pack_comms_trace_reset();          // reset comms trace, will initiate pack incoming data resets if they don't start flagging as read
-} // end of loop1000
-
-void loop2000()                      // This function called every 2000mS
-{
+  flash_led();                       // flash onboard Teensy LED  
   restore_resettables();             // restore fault variables that can self heal
   coolant_fan_pump_output();         // sets PWM's for the fans and the pumps.
-  
-} // end of loop2000
+  pack0_reset_incoming_data();       // reset incoming data.
+  pack1_reset_incoming_data();       // reset incoming data.
+} // end of main loop

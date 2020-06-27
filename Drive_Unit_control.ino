@@ -66,7 +66,13 @@ void parse_du_104(const CAN_message_t &msg)
 }
 
 void du_calcs()
+
 {
+  if (!scheduler(1)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
+  
   // figure out what the DU outputs need to be 
   canio = cruise + (du_start * 2) + (brake * 4) + (forward * 8) + (reverse * 16) + (bms * 32); // compact these bools into a byte
   canio_old = canio;                                                                           // save a copy for display and logging
@@ -181,6 +187,10 @@ void du_calcs()
 
 void cruise_control()
 {
+  if (!scheduler(8)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   if (brake_vcm = 0 || shift_state <= 3) // if brake is pressed, or shifter is in left shift, reverse, or neutral, cruise is off
   {
     if (cruise_on)
@@ -201,7 +211,11 @@ void cruise_control()
 }
 
 void du_outgoing_message()
-{  
+{
+  if (!scheduler(2)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }  
   CAN_message_t msg;
   msg.id = 0x100;
   msg.flags.extended = 0;
@@ -227,6 +241,10 @@ void du_outgoing_message()
 
 void du_accelerometer_read()
 {
+  if (!scheduler(3)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   Wire.beginTransmission(MPU_addr);
   Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
   Wire.endTransmission(false);
@@ -251,6 +269,10 @@ void du_accelerometer_read()
 
 void shifter_pos()
 {
+  if (!scheduler(0)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   int shift_state_old = shift_state;
   
   if (digitalRead(shifter_a) && !digitalRead(shifter_b) && digitalRead(shifter_c) && digitalRead(shifter_d) && digitalRead(shifter_e) && !digitalRead(shifter_f) && !digitalRead(shifter_g) && !digitalRead(shifter_h))
@@ -343,6 +365,10 @@ void shifter_pos()
 
 void shifter_lock()
 {
+  if (!scheduler(7)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   if (brake_vcm != 0 && shift_state == 3) // if we're in neutral, and the brake is pressed, ok to release shift lock.
   {
     mcp.digitalWrite(shiftlock_pin, HIGH);   
@@ -356,5 +382,9 @@ void shifter_lock()
 
 void du_traction_control()
 {
+  if (!scheduler(4)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
 
 }

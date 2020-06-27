@@ -15,7 +15,10 @@ void setup_thermal_management()
 
 void coolant_fan_pump_output()
 {
-  
+  if (!scheduler(29)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   coolant_pump_batt = 0; // turn off coolant pump
 
   
@@ -108,6 +111,10 @@ void coolant_fan_pump_output()
 
 void coolant_diverter_control()
 {
+  if (!scheduler(9)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   if ((analogRead(an_acc_voltage)) <= 900)      // if we dont have power, don't try to run the diverter valves, they will try to use 3.3v logic power, that would be bad.
   {
     mcp.digitalWrite(mode_in1_pin, LOW);        // set short brake

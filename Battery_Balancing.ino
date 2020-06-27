@@ -6,6 +6,10 @@ void setup_coulomb_counter()
 
 void output_balancing_can()          // battery balancing comms, sends to 0x20A a status of 0x02, which is chevy volt speak for "charging". It can only balance in this status. Not sure if there is a reason to change it.
 {                                    // the next part is the actual balance comands. They go out in 3 seperate blocks that go out every 20ms in sequence, preceeded by the 0x20A, (car mode) each time.
+  if (!scheduler(5)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   CAN_message_t msg;
   switch (balance_loop)
   { 
@@ -89,6 +93,10 @@ void output_balancing_can()          // battery balancing comms, sends to 0x20A 
 
 void coulomb_SOC()
 {
+  if (!scheduler(20)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   if (pack0_coulomb_SOC_initialized)
   {
     pack0_coulombs_remaining = pack0_coulombs_remaining + (pack0_amp_accumulator / pack0_amp_counter);   // average of the amperage in the last second are subtracted from the columns remaining.
@@ -132,6 +140,10 @@ void coulomb_SOC()
 
 void balancing_state()
 {
+  if (!scheduler(16)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   //Add up all the bits within the cell balancing high array to display the quantity of cells high balancing currently
 
   pack0_quantity_balancing_high = 0;
@@ -211,334 +223,390 @@ void balancing_state()
 
 void pack_comms_trace_reset()    // periodically runs to set the comms trace to zero.
 {
+  if (!scheduler(27)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   pack0_comms_timeout_trace = 0; // Reset comms trace to zero
   pack1_comms_timeout_trace = 0; // Reset comms trace to zero
 }
 
 void pack0_reset_incoming_data()
 {
-  for (int i = 0; i <= 95; ++i) //setting array to zero using a loop
+  if (!scheduler(30)) // if its NOT time to run this
   {
-    pack0_cell_voltages[i] = 0;
+    return;          // then skip it
   }
-  for (int i = 0; i <= 8; ++i)  //setting array to zero using a loop
+  if(pack1_comms_timeout_trace > 0)                                      // if any comms have flagged as recieved...
   {
-    pack0_temperatures[i] = 0;
+    pack1_comms_timeout_clock = currentMillis;                           // reset the timer to current millis
   }
-  pack0_high_range_amperage = 0;
-  pack0_low_range_amperage = 0;
-  pack0_voltage = 0;
-  pack0_loss_of_comms = true;
+  if(currentMillis - pack1_comms_timeout_clock >= pack_comms_timeout)    // if more than the "timeout" ms have elapsed since the last run, reset the timer and run reset functions.
+  {
+    for (int i = 0; i <= 95; ++i) //setting array to zero using a loop
+    {
+      pack0_cell_voltages[i] = 0;
+    }
+    for (int i = 0; i <= 8; ++i)  //setting array to zero using a loop
+    {
+      pack0_temperatures[i] = 0;
+    }
+    pack0_high_range_amperage = 0;
+    pack0_low_range_amperage = 0;
+    pack0_voltage = 0;
+    pack0_loss_of_comms = true;
+  }
 }                               //end of pack0_reset_incoming_data
 
 void pack1_reset_incoming_data()
 {
-  for (int i = 0; i <= 95; ++i) //setting array to zero using a loop
+  if (!scheduler(31)) // if its NOT time to run this
   {
-    pack1_cell_voltages[i] = 0;
+    return;          // then skip it
   }
-  for (int i = 0; i <= 8; ++i)  //setting array to zero using a loop
+  if(pack1_comms_timeout_trace > 0)                                      // if any comms have flagged as recieved...
   {
-    pack1_temperatures[i] = 0;
+    pack1_comms_timeout_clock = currentMillis;                           // reset the timer to current millis
   }
-  pack1_high_range_amperage = 0;
-  pack1_low_range_amperage = 0;
-  pack1_voltage = 0;
-  pack1_loss_of_comms = true;
+  if(currentMillis - pack1_comms_timeout_clock >= pack_comms_timeout)    // if more than the "timeout" ms have elapsed since the last run, reset the timer and run reset functions.
+  {
+    pack1_comms_timeout_clock = currentMillis;                           // reset the timer to current millis
+    pack1_reset_incoming_data();                                         // reset incoming data.                                    
+    for (int i = 0; i <= 95; ++i) //setting array to zero using a loop
+    {
+      pack1_cell_voltages[i] = 0;
+    }
+    for (int i = 0; i <= 8; ++i)  //setting array to zero using a loop
+    {
+      pack1_temperatures[i] = 0;
+    }
+    pack1_high_range_amperage = 0;
+    pack1_low_range_amperage = 0;
+    pack1_voltage = 0;
+    pack1_loss_of_comms = true;
+  }    
 }                               //end of reset_incoming_data
 
 void execute_master_reset()
 {
-  pack0_cell_high_fault         = false; // 
-  pack1_cell_high_fault         = false; //
-  pack0_cell_high_warning       = false; //
-  pack1_cell_high_warning       = false; //
-  pack0_cell_low_fault          = false; //
-  pack1_cell_low_fault          = false; //
-  pack0_cell_low_warning        = false; //
-  pack1_cell_low_warning        = false; //
-  pack0_inhibit_high_balancing  = false; //
-  pack1_inhibit_high_balancing  = false; //
-  pack0_inhibit_low_balancing   = false; //
-  pack1_inhibit_low_balancing   = false; //
-  charging_allowed              = true;  //
-  pack0_loss_of_comms           = false; //
-  pack1_loss_of_comms           = false; //
-  aps_fault                     = false; //
-  rps_fault                     = false; // 
-}
+  if (!scheduler(6)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
+  if (master_reset)
+  {
+    pack0_cell_high_fault         = false; // 
+    pack1_cell_high_fault         = false; //
+    pack0_cell_high_warning       = false; //
+    pack1_cell_high_warning       = false; //
+    pack0_cell_low_fault          = false; //
+    pack1_cell_low_fault          = false; //
+    pack0_cell_low_warning        = false; //
+    pack1_cell_low_warning        = false; //
+    pack0_inhibit_high_balancing  = false; //
+    pack1_inhibit_high_balancing  = false; //
+    pack0_inhibit_low_balancing   = false; //
+    pack1_inhibit_low_balancing   = false; //
+    charging_allowed              = true;  //
+    pack0_loss_of_comms           = false; //
+    pack1_loss_of_comms           = false; //
+    aps_fault                     = false; //
+    rps_fault                     = false; // 
+  }
+} // end execute_master_reset
 
 void restore_resettables()
 {
+  if (!scheduler(28)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   pack0_loss_of_comms = false;
   pack1_loss_of_comms = false;
 }                             //end of restore_resettables
 
 void pack0_balance_output_sequencer()
 {
-  switch (pack0_cell_balancing_state)
+  if (!scheduler(17)) // if its NOT time to run this
   {
-    case 0:
-    for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-    {
-      pack0_cell_balancing[i] = 0;
-    }
-    pack0_balance_sequencer = 0;
-    break;
-
-    case 1: //balancing high cell(s) only active
-    for (int i = 0; i <= 11; ++i) //copy the array over
-    {
-      pack0_cell_balancing[i] = pack0_cell_balancing_high[i];
-    }    
-    pack0_balance_sequencer = 0;
-    break;
-
-    case 2:  //balancing low cell(s) only active
-    if (pack0_balance_sequencer > 3) pack0_balance_sequencer = 0;
-    switch (pack0_balance_sequencer)
+    return;          // then skip it
+  }
+  if (pack0_enabled)
+  {
+    switch (pack0_cell_balancing_state)
     {
       case 0:
       for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
       {
-        pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x11; //turn on balancing on every 4th cell excluding the low cells
+        pack0_cell_balancing[i] = 0;
       }
-      pack0_balance_sequencer++;
+      pack0_balance_sequencer = 0;
       break;
-          
-      case 1:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x22; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      pack0_balance_sequencer++;
-      break;
-          
-      case 2:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x44; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      pack0_balance_sequencer++;
-      break;          
-          
-      case 3:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x88; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      if (pack0_balance_sequencer >= 3) pack0_balance_sequencer = 0;
-      break;          
-    }                   // end of switch (balance_low_counter)
-    break;
-
-    case 3:  //balancing high and low cell(s) active
-    if (pack0_balance_sequencer > 7) pack0_balance_sequencer = 0;
-    switch (pack0_balance_sequencer)
-    {
-      case 0:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x11; //turn on balancing on every 4th cell excluding the low cells
-      }
-      pack0_balance_sequencer++;
-      break;
-
-      case 1:
+  
+      case 1: //balancing high cell(s) only active
       for (int i = 0; i <= 11; ++i) //copy the array over
       {
         pack0_cell_balancing[i] = pack0_cell_balancing_high[i];
-      }
-      pack0_balance_sequencer++;
+      }    
+      pack0_balance_sequencer = 0;
       break;
-
-      case 2:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+  
+      case 2:  //balancing low cell(s) only active
+      if (pack0_balance_sequencer > 3) pack0_balance_sequencer = 0;
+      switch (pack0_balance_sequencer)
       {
-        pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x22; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      pack0_balance_sequencer++;
+        case 0:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x11; //turn on balancing on every 4th cell excluding the low cells
+        }
+        pack0_balance_sequencer++;
+        break;
+            
+        case 1:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x22; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        pack0_balance_sequencer++;
+        break;
+            
+        case 2:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x44; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        pack0_balance_sequencer++;
+        break;          
+            
+        case 3:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x88; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        if (pack0_balance_sequencer >= 3) pack0_balance_sequencer = 0;
+        break;          
+      }                   // end of switch (balance_low_counter)
       break;
-
-      case 3:
-      for (int i = 0; i <= 11; ++i) //copy the array over
+  
+      case 3:  //balancing high and low cell(s) active
+      if (pack0_balance_sequencer > 7) pack0_balance_sequencer = 0;
+      switch (pack0_balance_sequencer)
       {
-        pack0_cell_balancing[i] = pack0_cell_balancing_high[i];
-      }
-      pack0_balance_sequencer++;          
+        case 0:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x11; //turn on balancing on every 4th cell excluding the low cells
+        }
+        pack0_balance_sequencer++;
+        break;
+  
+        case 1:
+        for (int i = 0; i <= 11; ++i) //copy the array over
+        {
+          pack0_cell_balancing[i] = pack0_cell_balancing_high[i];
+        }
+        pack0_balance_sequencer++;
+        break;
+  
+        case 2:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x22; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        pack0_balance_sequencer++;
+        break;
+  
+        case 3:
+        for (int i = 0; i <= 11; ++i) //copy the array over
+        {
+          pack0_cell_balancing[i] = pack0_cell_balancing_high[i];
+        }
+        pack0_balance_sequencer++;          
+        break;
+            
+        case 4:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x44; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        pack0_balance_sequencer++;
+        break;          
+  
+        case 5:
+        for (int i = 0; i <= 11; ++i) //copy the array over
+        {
+          pack0_cell_balancing[i] = pack0_cell_balancing_high[i];
+        }
+        pack0_balance_sequencer++;          
+        break;
+            
+        case 6:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x88; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        pack0_balance_sequencer++;
+        break;
+            
+        case 7:
+        for (int i = 0; i <= 11; ++i) //copy the array over
+        {
+          pack0_cell_balancing[i] = pack0_cell_balancing_high[i];
+        }
+        pack0_balance_sequencer++;          
+        break;
+       
+      }                       // end of switch (balance_low_counter)
       break;
-          
-      case 4:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x44; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      pack0_balance_sequencer++;
-      break;          
-
-      case 5:
-      for (int i = 0; i <= 11; ++i) //copy the array over
-      {
-        pack0_cell_balancing[i] = pack0_cell_balancing_high[i];
-      }
-      pack0_balance_sequencer++;          
-      break;
-          
-      case 6:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack0_cell_balancing[i] = (0xFF - pack0_cell_balancing_low[i]) & 0x88; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      pack0_balance_sequencer++;
-      break;
-          
-      case 7:
-      for (int i = 0; i <= 11; ++i) //copy the array over
-      {
-        pack0_cell_balancing[i] = pack0_cell_balancing_high[i];
-      }
-      pack0_balance_sequencer++;          
-      break;
-     
-    }                       // end of switch (balance_low_counter)
-    break;
-  }                         // end of switch (balance_state)
-}                           // end of pack0_balance_output_sequencer function
+    }                         // end of switch (balance_state)
+  }                           // end if pack0_enabled statement                   
+}                             // end of pack0_balance_output_sequencer function
 
 void pack1_balance_output_sequencer()
 {
-  switch (pack1_cell_balancing_state)
+  if (!scheduler(18)) // if its NOT time to run this
   {
-    case 0:
-    for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-    {
-      pack1_cell_balancing[i] = 0;
-    }
-    pack1_balance_sequencer = 0;
-    break;
-
-    case 1: //balancing high cell(s) only active
-    for (int i = 0; i <= 11; ++i) //copy the array over
-    {
-      pack1_cell_balancing[i] = pack1_cell_balancing_high[i];
-    }    
-    pack1_balance_sequencer = 0;
-    break;
-
-    case 2:  //balancing low cell(s) only active
-    if (pack1_balance_sequencer > 3) pack1_balance_sequencer = 0;
-    switch (pack1_balance_sequencer)
+    return;          // then skip it
+  }
+  if (pack1_enabled)
+  {
+    switch (pack1_cell_balancing_state)
     {
       case 0:
       for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
       {
-        pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x11; //turn on balancing on every 4th cell excluding the low cells
+        pack1_cell_balancing[i] = 0;
       }
-      pack1_balance_sequencer++;
+      pack1_balance_sequencer = 0;
       break;
-          
-      case 1:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x22; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      pack1_balance_sequencer++;
-      break;
-          
-      case 2:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x44; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      pack1_balance_sequencer++;
-      break;          
-          
-      case 3:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x88; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      if (pack1_balance_sequencer >= 3) pack1_balance_sequencer = 0;
-      break;          
-    }                   // end of switch (balance_low_counter)
-    break;
-
-    case 3:  //balancing high and low cell(s) active
-    if (pack1_balance_sequencer > 7) pack1_balance_sequencer = 0;
-    switch (pack1_balance_sequencer)
-    {
-      case 0:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x11; //turn on balancing on every 4th cell excluding the low cells
-      }
-      pack1_balance_sequencer++;
-      break;
-
-      case 1:
-      for (int i = 0; i <= 11; ++i) //copy the array over
-      {
-        pack1_cell_balancing[i] = pack1_cell_balancing_high[i];
-      }
-      pack1_balance_sequencer++;
-      break;
-
-      case 2:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x22; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      pack1_balance_sequencer++;
-      break;
-
-      case 3:
-      for (int i = 0; i <= 11; ++i) //copy the array over
-      {
-        pack1_cell_balancing[i] = pack1_cell_balancing_high[i];
-      }
-      pack1_balance_sequencer++;          
-      break;
-          
-      case 4:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x44; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      pack1_balance_sequencer++;
-      break;          
-
-      case 5:
-      for (int i = 0; i <= 11; ++i) //copy the array over
-      {
-        pack1_cell_balancing[i] = pack1_cell_balancing_high[i];
-      }
-      pack1_balance_sequencer++;          
-      break;
-          
-      case 6:
-      for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
-      {
-        pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x88; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
-      }
-      pack1_balance_sequencer++;
-      break;
-          
-      case 7:
-      for (int i = 0; i <= 11; ++i) //copy the array over
-      {
-        pack1_cell_balancing[i] = pack1_cell_balancing_high[i];
-      }
-      pack1_balance_sequencer++;          
-      break;
-     
-    }                       // end of switch (balance_low_counter)
-    break;
-  }                         // end of switch (balance_state)
-}                           // end of pack1_balance_output_sequencer function
   
+      case 1: //balancing high cell(s) only active
+      for (int i = 0; i <= 11; ++i) //copy the array over
+      {
+        pack1_cell_balancing[i] = pack1_cell_balancing_high[i];
+      }    
+      pack1_balance_sequencer = 0;
+      break;
+  
+      case 2:  //balancing low cell(s) only active
+      if (pack1_balance_sequencer > 3) pack1_balance_sequencer = 0;
+      switch (pack1_balance_sequencer)
+      {
+        case 0:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x11; //turn on balancing on every 4th cell excluding the low cells
+        }
+        pack1_balance_sequencer++;
+        break;
+            
+        case 1:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x22; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        pack1_balance_sequencer++;
+        break;
+            
+        case 2:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x44; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        pack1_balance_sequencer++;
+        break;          
+            
+        case 3:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x88; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        if (pack1_balance_sequencer >= 3) pack1_balance_sequencer = 0;
+        break;          
+      }                   // end of switch (balance_low_counter)
+      break;
+  
+      case 3:  //balancing high and low cell(s) active
+      if (pack1_balance_sequencer > 7) pack1_balance_sequencer = 0;
+      switch (pack1_balance_sequencer)
+      {
+        case 0:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x11; //turn on balancing on every 4th cell excluding the low cells
+        }
+        pack1_balance_sequencer++;
+        break;
+  
+        case 1:
+        for (int i = 0; i <= 11; ++i) //copy the array over
+        {
+          pack1_cell_balancing[i] = pack1_cell_balancing_high[i];
+        }
+        pack1_balance_sequencer++;
+        break;
+  
+        case 2:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x22; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        pack1_balance_sequencer++;
+        break;
+  
+        case 3:
+        for (int i = 0; i <= 11; ++i) //copy the array over
+        {
+          pack1_cell_balancing[i] = pack1_cell_balancing_high[i];
+        }
+        pack1_balance_sequencer++;          
+        break;
+            
+        case 4:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x44; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        pack1_balance_sequencer++;
+        break;          
+  
+        case 5:
+        for (int i = 0; i <= 11; ++i) //copy the array over
+        {
+          pack1_cell_balancing[i] = pack1_cell_balancing_high[i];
+        }
+        pack1_balance_sequencer++;          
+        break;
+            
+        case 6:
+        for (int i = 0; i <= 11; ++i) //setting array to zero using a loop
+        {
+          pack1_cell_balancing[i] = (0xFF - pack1_cell_balancing_low[i]) & 0x88; //turn on balancing on every 4th cell excluding the low cells, next 4 in line
+        }
+        pack1_balance_sequencer++;
+        break;
+            
+        case 7:
+        for (int i = 0; i <= 11; ++i) //copy the array over
+        {
+          pack1_cell_balancing[i] = pack1_cell_balancing_high[i];
+        }
+        pack1_balance_sequencer++;          
+        break;
+       
+      }                       // end of switch (balance_low_counter)
+      break;
+    }                         // end of switch (balance_state)
+  }                           // end of if pack1_enabled
+}                             // end of pack1_balance_output_sequencer function
   // Battery statistic calcs
 void battery_statistics()
 {
+  if (!scheduler(14)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   pack0_cell_sum_volt = 0;                              // reset the average to zero so it doesn't accumulate each loop
   pack1_cell_sum_volt = 0;                              // reset the average to zero so it doesn't accumulate each loop
   pack0_highest_cell = 0;                               // reset the highest cell statistic
@@ -592,6 +660,10 @@ void battery_statistics()
 
 void fault_logic()
 {
+  if (!scheduler(11)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   if(pack0_enabled && pack0_cell_low_warning)
   {
     pack0_inhibit_high_balancing   = false; // warning only, no action
@@ -652,6 +724,10 @@ void fault_logic()
   // figure out which cells need to be balanced, and if there are any WAY out of balance
 void balancing_determination()
 {
+  if (!scheduler(15)) // if its NOT time to run this
+  {
+    return;          // then skip it
+  }
   // this "for loop" is the one that looks at each cell to determine its deviation from average, then corrective action
   for(int i=0; i <= 95 ; i++)
   {
